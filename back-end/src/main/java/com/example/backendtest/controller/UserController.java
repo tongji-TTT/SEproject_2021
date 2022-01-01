@@ -24,7 +24,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
-    VerifyEmailUtil verifyEmailUtil;
+    private final VerifyEmailUtil verifyEmailUtil;
 
     // 测试后端是否正常工作
     @ApiOperation("测试：返回简单字符串")
@@ -86,7 +86,7 @@ public class UserController {
     /**
      * 下面这个接口是用户自行注册时调用的，无需鉴权
      */
-    @ApiOperation("新增用户")
+    @ApiOperation("用户注册")
     @PostMapping("register")
     public JSONObject register(@RequestBody UserEntity user) {
         return userService.add(user);
@@ -98,12 +98,6 @@ public class UserController {
     public JSONObject remove(Integer id) {
         return userService.remove(id);
     }
-
-//    @ApiOperation("用户登录")
-//    @GetMapping("login")
-//    public JSONObject login(Integer id, String password) {
-//        return userService.login(id, password);
-//    }
 
     @ApiOperation("用户登录")
     @GetMapping("login")
@@ -145,38 +139,46 @@ public class UserController {
         return userService.administratorUpdateUserInfo(user);
     }
 
-    @PostMapping ("/mail")
+    @SaCheckLogin
+    @PostMapping ("/verify/send")
     @ApiOperation("发送验证码到邮箱")
-    public JSONObject sendVerifyCode(HttpServletRequest request, String email) {
-        return verifyEmailUtil.sendMail(request,email);
+    public JSONObject sendVerifyCode(String email, Integer userId) {
+        return verifyEmailUtil.sendVerificationEmail(email, userId);
     }
 
-    @PostMapping("/verify")
-    @ApiOperation("检验验证码")
-    public JSONObject verify(String inputCode, HttpServletRequest request){
-       return verifyEmailUtil.checkCode(inputCode,request);
+    @SaCheckLogin
+    @ApiOperation("检验验证码并激活账号")
+    @PostMapping("/verify/activate")
+    public JSONObject verifyCodeAndActivateAccount(String code, Integer userId) {
+        return verifyEmailUtil.checkVerificationCode(code, userId);
     }
 
-    @PostMapping("/verifyAndActivate")
-    @ApiOperation("检验验证码并激活")
-    public JSONObject verify(String inputCode, HttpServletRequest request,@RequestBody UserEntity user){
+//    @SaCheckLogin
+    @ApiOperation("重置密码接口1 - 发送验证邮件")
+    @PostMapping("/updatePassword/sendEmail")
+    public JSONObject verifyPasswordAndSendVerificationEmail(Integer userId) {
+        return userService.verifyPasswordAndSendVerificationEmail(userId);
+    }
 
-        JSONObject jsonObject = new JSONObject();
-        JSONObject json = new JSONObject();
-        jsonObject = verifyEmailUtil.checkCode(inputCode,request);
-        if(jsonObject.getInteger("status")==200)
-        {
-            //进行激活
-            userService.administratorUpdateUserInfo(user);
-            json.put("status", 200);
-            json.put("message", "验证成功并激活");
-        }
-        else
-        {
-            json.put("status", 500);
-            json.put("message", "验证错误");
-        }
-        return json;
+//    @SaCheckLogin
+    @ApiOperation("重置密码接口2 - 检验验证码")
+    @PostMapping("/updatePassword/checkCode")
+    public JSONObject checkVerificationCode(Integer userId, String code) {
+        return userService.checkVerificationCode(userId, code);
+    }
+
+    @SaCheckLogin
+    @ApiOperation("重置密码接口3 - 输入新密码")
+    @PostMapping("/updatePassword")
+    public JSONObject updatePassword(Integer userId, String newPassword) {
+        return userService.updatePassword(userId, newPassword);
+    }
+
+//    @SaCheckLogin
+    @ApiOperation("找回密码：以用户id返回密码")
+    @GetMapping("/recoverPassword")
+    public String recoverPassword(Integer userId) {
+        return userService.recoverPassword(userId);
     }
 
     @PutMapping("/sign")
